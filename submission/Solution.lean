@@ -8,7 +8,7 @@ theorem signature_bytes : submission.sizes.signature = 119632 := by rfl
 
 theorem witness_bytes : submission.sizes.witness = 119632 := by rfl
 
-theorem certificate : SigGolf.Certificate submission 5617759 :=
+theorem certificate : SigGolf.Certificate submission 4932151 :=
   SigGolfCandidate.Hypertree.Candidate.certificate
 
 end SigGolf.Challenge
