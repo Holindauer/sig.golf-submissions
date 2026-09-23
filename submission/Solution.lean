@@ -4,11 +4,11 @@ namespace SigGolf.Challenge
 
 noncomputable def submission : SigGolf.Submission := SigGolfCandidate.Hypertree.submission
 
-theorem signature_bytes : submission.sizes.signature = 119632 := by rfl
+theorem signature_bytes : submission.sizes.signature = 113616 := by rfl
 
-theorem witness_bytes : submission.sizes.witness = 119632 := by rfl
+theorem witness_bytes : submission.sizes.witness = 113616 := by rfl
 
-theorem certificate : SigGolf.Certificate submission 3218131 :=
+theorem certificate : SigGolf.Certificate submission 3056235 :=
   SigGolfCandidate.Hypertree.Candidate.certificate
 
 end SigGolf.Challenge
