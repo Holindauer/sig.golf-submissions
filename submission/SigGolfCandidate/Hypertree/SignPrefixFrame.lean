@@ -36,7 +36,7 @@ theorem index_trace_full (hash : Hash) (s : MachineState) (pc : s.pc = 0x11b8) :
       (∀ i : Fin 2, final.getMem (wordAddress 0x80408 i.val) =
         (hash (hashInput (indexHashState s))).extractLsb' (64 * i.val) 64) ∧
       final.getMem 0x80418 =
-        ((hash (hashInput (indexHashState s))).extractLsb' 128 64 <<< 40) >>> 40 ∧
+        ((hash (hashInput (indexHashState s))).extractLsb' 128 64 <<< 32) >>> 32 ∧
       (∀ a, (∀ i : Fin 4, a ≠ wordAddress 0x80300 i.val) →
         (∀ i : Fin 3, a ≠ wordAddress 0x80408 i.val) → final.getMem a = s.getMem a) ∧
       final.getReg .x2 = s.getReg .x2 := by
@@ -44,7 +44,7 @@ theorem index_trace_full (hash : Hash) (s : MachineState) (pc : s.pc = 0x11b8) :
   have hpc : hs.pc = 0x11d0 := by simp [hs, indexHashState_pc, pc]
   obtain ⟨service, src, len, dst⟩ := indexHashState_regs s
   have hf : fetch sign hs = some (.base .ECALL) := by simp only [fetch, hpc]; decide
-  have hv : hashArgumentsValid hs = true := hash_arguments hs 896 src len dst (by decide)
+  have hv : hashArgumentsValid hs = true := hash_arguments hs 112 src len dst (by decide)
   have hlen : (hashInput hs).1 = 896 := by simp [hashInput, hs, len]
   let answer := hash (hashInput hs)
   have outpc : (writeHash hs answer).pc = 0x11d4 := by simp [hash_pc, hpc]
