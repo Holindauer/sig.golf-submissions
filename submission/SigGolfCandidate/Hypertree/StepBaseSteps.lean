@@ -1,13 +1,13 @@
-import SigGolfCandidate.Hypertree.CounterInitialData
+import SigGolfCandidate.Hypertree.StepBaseInitialData
 import SigGolfCandidate.Hypertree.CounterCheck
-namespace SigGolfCandidate.Hypertree.CounterSteps
+namespace SigGolfCandidate.Hypertree.StepBaseSteps
 open SigGolf SigGolf.Riscv RiscvZkvm.Rv64 Keygen Signing Verifying InplaceData
 set_option maxRecDepth 8192
 
 def InitialCode (image : Image) (p : Word) : Prop :=
-  InplaceInitialPrepare.Code image p ∧ CounterCore.Code image (p+236)
+  StepBaseBlocks.InitialCode image p ∧ StepBaseCore.Code image (p+236)
 def RecurrentCode (image : Image) (p : Word) : Prop :=
-  CounterArgs.Code image p ∧ CounterCore.Code image (p+104)
+  StepBaseBlocks.PrepareCode image p ∧ StepBaseCore.Code image (p+104)
 
 theorem check_constant (s : MachineState) :
     (CounterCheck.shortCheck s).getReg .x13 = s.getReg .x13 := by
@@ -15,11 +15,11 @@ theorem check_constant (s : MachineState) :
 
 theorem initial (image : Image) (hash : Hash)
     (checkCode : CheckReuse.Code image 0x14f4)
-    (prepareCode : InplaceInitialPrepare.Code image 0x1500) (coreCode : CounterCore.Code image 0x15ec)
+    (prepareCode : StepBaseBlocks.InitialCode image 0x1500) (coreCode : StepBaseCore.Code image 0x15ec)
     (s : MachineState) (level tree step : Nat) (side : Bool) (chain : Reference.Chain) (value : Reference.Digest)
     (pc : s.pc = 0x14f4) (base : s.getReg .x28 = 0x80438)
     (bound : step < 7) (data : ChainData s level tree side chain step value) :
-    ∃ final, Trace hash image s 40 47 1 1 final ∧ final.pc = 0x1580 ∧
+    ∃ final, Trace hash image s 38 45 1 1 final ∧ final.pc = 0x1580 ∧
       Buffered final level tree side chain (step+1) (Reference.chainHash hash level tree side chain step value) ∧
       CachedPrepare.Ready final ∧ final.getReg .x28 = 0x80438 ∧ final.getReg .x13 = 4294967296 ∧
       (final.getReg .x11 = 48 ∧ final.getReg .x12 = 0x80020 ∧ final.getReg .x5 = 1) ∧
@@ -36,7 +36,7 @@ theorem initial (image : Image) (hash : Hash)
   have checkedPC : (CheckReuse.shortCheck s).pc = 0x1500 := by
     rw [CheckReuse.short_pc s base,pc,if_neg ne]; rfl
   obtain ⟨final,run,finalPC,finalData,finalReady,finalBase,finalConstant,finalArgs,finalCounter,finalLimit,ra,sp,frame⟩ :=
-    CounterInitialData.compute image hash 0x1500 prepareCode coreCode (CheckReuse.shortCheck s)
+    StepBaseInitialData.compute image hash 0x1500 prepareCode coreCode (CheckReuse.shortCheck s)
       level tree step side chain value checkedPC (by rw [CheckReuse.short_base]; exact base)
       (RegisterCounter.initial_check_counter s base) data.shortCheck
   refine ⟨final,(CheckReuse.block image 0x14f4 checkCode s pc base).trace.trans run,finalPC,
@@ -45,19 +45,19 @@ theorem initial (image : Image) (hash : Hash)
   intro a outside
   rw [frame a outside,CheckReuse.short_mem]
 
-/-- info: 'SigGolfCandidate.Hypertree.CounterSteps.initial' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/-- info: 'SigGolfCandidate.Hypertree.StepBaseSteps.initial' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in
 #print axioms initial
 theorem recurrent (image : Image) (hash : Hash)
     (checkCode : CounterCheck.Code image 0x1580)
-    (prepareCode : CounterArgs.Code image 0x1584) (coreCode : CounterCore.Code image 0x15ec)
+    (prepareCode : StepBaseBlocks.PrepareCode image 0x1584) (coreCode : StepBaseCore.Code image 0x15ec)
     (s : MachineState) (level tree step : Nat) (side : Bool) (chain : Reference.Chain) (value : Reference.Digest)
     (pc : s.pc = 0x1580) (base : s.getReg .x28 = 0x80438)
     (constant : s.getReg .x13 = 4294967296) (ready : CachedPrepare.Ready s)
     (args : s.getReg .x11 = 48 ∧ s.getReg .x12 = 0x80020 ∧ s.getReg .x5 = 1)
     (counter : s.getReg .x6 = s.getMem 0x80438) (limit : s.getReg .x7 = 7)
     (bound : step < 7) (data : Buffered s level tree side chain step value) :
-    ∃ final, Trace hash image s 12 19 1 1 final ∧ final.pc = 0x1580 ∧
+    ∃ final, Trace hash image s 10 17 1 1 final ∧ final.pc = 0x1580 ∧
       Buffered final level tree side chain (step+1) (Reference.chainHash hash level tree side chain step value) ∧
       CachedPrepare.Ready final ∧ final.getReg .x28 = 0x80438 ∧ final.getReg .x13 = 4294967296 ∧
       (final.getReg .x11 = 48 ∧ final.getReg .x12 = 0x80020 ∧ final.getReg .x5 = 1) ∧
@@ -82,7 +82,7 @@ theorem recurrent (image : Image) (hash : Hash)
     · simpa only [CounterCheck.mem] using data.indexEq
     · simpa only [CounterCheck.mem] using data.valueEq
   obtain ⟨final,run,finalPC,finalData,finalReady,finalBase,finalConstant,finalArgs,finalCounter,finalLimit,ra,sp,frame⟩ :=
-    CounterData.recurrent image hash 0x1584 prepareCode coreCode (CounterCheck.shortCheck s)
+    StepBaseData.recurrent image hash 0x1584 prepareCode coreCode (CounterCheck.shortCheck s)
       level tree step side chain value checkedPC (by rw [CounterCheck.short_base]; exact base)
       ((check_constant s).trans constant) (CounterCheck.ready s ready)
       ⟨(CounterCheck.reg s .x11 (by decide)).trans args.1,
@@ -94,7 +94,7 @@ theorem recurrent (image : Image) (hash : Hash)
   intro a outside
   rw [frame a outside,CounterCheck.short_mem]
 
-/-- info: 'SigGolfCandidate.Hypertree.CounterSteps.recurrent' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/-- info: 'SigGolfCandidate.Hypertree.StepBaseSteps.recurrent' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in
 #print axioms recurrent
-end SigGolfCandidate.Hypertree.CounterSteps
+end SigGolfCandidate.Hypertree.StepBaseSteps

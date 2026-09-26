@@ -1,15 +1,15 @@
-import SigGolfCandidate.Hypertree.CounterData
+import SigGolfCandidate.Hypertree.StepBaseData
 import SigGolfCandidate.Hypertree.InplaceInitialPrepare
-namespace SigGolfCandidate.Hypertree.CounterInitialData
+namespace SigGolfCandidate.Hypertree.StepBaseInitialData
 open SigGolf SigGolf.Riscv RiscvZkvm.Rv64 Keygen Signing Verifying InplaceData
 set_option maxRecDepth 8192
 
 theorem compute (image : Image) (hash : Hash) (p : Word)
-    (prepareCode : InplaceInitialPrepare.Code image p) (coreCode : CounterCore.Code image (p+236))
+    (prepareCode : StepBaseBlocks.InitialCode image p) (coreCode : StepBaseCore.Code image (p+236))
     (s : MachineState) (level tree step : Nat) (side : Bool) (chain : Reference.Chain) (value : Reference.Digest)
     (pc : s.pc = p) (base : s.getReg .x28 = 0x80438)
     (counter : s.getReg .x6 = s.getMem 0x80438) (data : ChainData s level tree side chain step value) :
-    ∃ final, Trace hash image s 37 44 1 1 final ∧ final.pc = p+128 ∧
+    ∃ final, Trace hash image s 35 42 1 1 final ∧ final.pc = p+128 ∧
       Buffered final level tree side chain (step+1) (Reference.chainHash hash level tree side chain step value) ∧
       CachedPrepare.Ready final ∧ final.getReg .x28 = 0x80438 ∧ final.getReg .x13 = 4294967296 ∧
       (final.getReg .x11 = 48 ∧ final.getReg .x12 = 0x80020 ∧ final.getReg .x5 = 1) ∧
@@ -40,16 +40,16 @@ theorem compute (image : Image) (hash : Hash) (p : Word)
   have valueEq : ∀ i : Fin 2, copied.getMem (Signing.wordAddress 0x80020 i.val) =
       value.extractLsb' (64*i.val) 64 := by intro i; rw [content i]; exact data.valueEq i
 
-  let prepared := ((KeygenChainHeader.state copied).setReg .x13 4294967296).setReg .x12 0x80020
-  have prepTrace : OrdinarySteps image s 32 prepared := by
-    have h := InplaceInitialPrepare.block image p prepareCode s pc base
-    rw [InplaceInitialPrepare.state_equiv s base] at h
+  let prepared := (((KeygenChainHeader.state copied).setReg .x13 4294967296).setReg .x12 0x80020).setReg .x28 0x80438
+  have prepTrace : OrdinarySteps image s 31 prepared := by
+    have h := StepBaseBlocks.initial_block image p prepareCode s pc base
+    rw [PersistentStepBase.initial_equiv s base,InplaceInitialPrepare.state_equiv s base] at h
     exact h
   have prepPC : prepared.pc = p+236 := by
     simp only [prepared,MachineState.setReg,KeygenChainHeader.pc,cpc]
     simp [BitVec.add_assoc]
-  have prepBase : prepared.getReg .x28 = 0x80018 := by
-    simpa [prepared,MachineState.getReg_setReg_ne] using ReusePrepare.header_base copied
+  have prepBase : prepared.getReg .x28 = 0x80438 := by
+    simp [prepared,MachineState.getReg_setReg_eq,MachineState.getReg_setReg_ne]
   have prepConstant : prepared.getReg .x13 = 4294967296 := by
     simp [prepared,MachineState.getReg_setReg_eq,MachineState.getReg_setReg_ne]
   have source : prepared.getReg .x10 = 0x80000 := by
@@ -59,20 +59,20 @@ theorem compute (image : Image) (hash : Hash) (p : Word)
   have service : prepared.getReg .x5 = 1 := by
     simpa [prepared,MachineState.getReg_setReg_ne] using (KeygenChainHeader.regs copied).1
   have destination : prepared.getReg .x12 = 0x80020 := by
-    simp [prepared,MachineState.getReg_setReg_eq]
+    simp [prepared,MachineState.getReg_setReg_eq,MachineState.getReg_setReg_ne]
   have current : InplaceInvariant.Current prepared := by
     simpa only [InplaceInvariant.Current,prepared,MachineState.getMem_setReg] using InplaceInvariant.full_prepare_current copied
   have oldwords := KeygenChainHeader.words copied level tree (Reference.sideNumber side) chain.val step value
     levelEq leafEq chainEq stepEq indexEq valueEq
   have words (i : Fin 6) : prepared.getMem (wordAddress 0x80000 i.val) =
       KeygenDomain.inputWord (KeygenDomain.header 2 level (Reference.sideNumber side) chain.val step) tree value i := by
-    simpa only [prepared,MachineState.getMem_setReg] using oldwords i
+    simpa [prepared,MachineState.getMem_setReg] using oldwords i
   have prepCounter : prepared.getReg .x6 = prepared.getMem 0x80438 := by
     have h := RegisterCounter.initial_counter s base counter
     rw [InplaceInitialPrepare.state_equiv s base] at h
-    exact h
+    simpa [prepared,copied,FusedPrepare.inputState,Copy6.optimized,MachineState.getReg_setReg_ne,MachineState.getMem_setReg] using h
   obtain ⟨final,core,finalPC,valueOut,finalReady,finalBase,finalConstant,finalArgs,stepOut,finalCounter,finalLimit,ra,sp,frame⟩ :=
-    CounterCore.compute image hash (p+236) coreCode prepared prepPC prepBase prepConstant current
+    StepBaseCore.compute image hash (p+236) coreCode prepared prepPC prepBase prepConstant current
       service source bits destination prepCounter level tree step side chain value words
   have prepFrame (a : Word) (outside : ∀ i : Fin 8, a ≠ wordAddress 0x80000 i.val) :
       prepared.getMem a = s.getMem a := by
@@ -96,7 +96,7 @@ theorem compute (image : Image) (hash : Hash) (p : Word)
   have prepLimit : prepared.getReg .x7 = s.getReg .x7 := by
     have h := PersistentLimit.initial_preserves s base
     rw [InplaceInitialPrepare.state_equiv s base] at h
-    exact h
+    simpa [prepared,copied,FusedPrepare.inputState,Copy6.optimized,MachineState.getReg_setReg_ne,MachineState.getMem_setReg] using h
   refine ⟨final,prepTrace.trace.trans core,?_,?_,finalReady,finalBase,finalConstant,finalArgs,finalCounter,finalLimit.trans prepLimit,
     ra.trans prepRA,sp.trans prepSP,keep⟩
   · simpa [BitVec.sub_eq_add_neg,BitVec.add_assoc] using finalPC
@@ -110,7 +110,7 @@ theorem compute (image : Image) (hash : Hash) (p : Word)
       exact data.indexEq i
     · exact valueOut
 
-/-- info: 'SigGolfCandidate.Hypertree.CounterInitialData.compute' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/-- info: 'SigGolfCandidate.Hypertree.StepBaseInitialData.compute' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in
 #print axioms compute
-end SigGolfCandidate.Hypertree.CounterInitialData
+end SigGolfCandidate.Hypertree.StepBaseInitialData

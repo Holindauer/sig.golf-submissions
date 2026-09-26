@@ -7,6 +7,6 @@ theorem witness_bytes : submission.sizes.witness = 119632 := by rfl
 theorem layout_offsets : submission.layout =
   { message := 0, secretKey := 32, publicKey := 64, cache := 96,
     signature := 131168, witness := 250800 } := by rfl
-theorem certificate : SigGolf.Certificate submission 1731313 :=
+theorem certificate : SigGolf.Certificate submission 1633369 :=
   SigGolfCandidate.Hypertree.PreludeCandidate.certificate
 end SigGolf.Challenge
